@@ -12,7 +12,6 @@ import com.example.PolyArguMindsBackend.repository.MessageRepository;
 import com.example.PolyArguMindsBackend.repository.SessionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -46,7 +45,6 @@ public class DiscussionService {
     private static final String PROMPT_CREATIVE = "You are IdeaSpark, a Creative Thinker. Brainstorm solutions for: '%s'. Think outside the box, suggest innovative features. Be inspiring. Plan your response to form a complete logical unit. Use **bold** for key sub-topics. Do NOT wrap up the session.";
     private static final String PROMPT_SUMMARIZER = "You are the Session Summarizer. The session is ending. Create a 'Discussion Summary Report'. 1. List Top Ideas. 2. List Key Risks. 3. Provide an Action Plan. Use **bold** for headers. This is the final output.";
 
-    @Transactional
     public Session startSession(StartSessionRequest request) {
         Session session = new Session();
         session.setTopic(request.getTopic());
@@ -92,7 +90,6 @@ public class DiscussionService {
     }
 
     // --- NEW: SAVE USER MESSAGE (THIS WAS MISSING) ---
-    @Transactional
     public Message saveUserMessage(String sessionId, String content) {
         Session session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found"));
@@ -102,7 +99,7 @@ public class DiscussionService {
         }
 
         Message userMsg = new Message();
-        userMsg.setSession(session);
+        userMsg.setSessionId(session.getId());
         userMsg.setSenderName("You"); // Or "User"
         userMsg.setContent(content);
         userMsg.setAi(false); // Mark as User
@@ -112,7 +109,6 @@ public class DiscussionService {
     }
     // -------------------------------------------------
 
-    @Transactional
     public Session extendSession(String sessionId, int extraMinutes) {
         Session session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found"));
@@ -129,7 +125,7 @@ public class DiscussionService {
 
         // Insert System Divider
         Message systemMsg = new Message();
-        systemMsg.setSession(session);
+        systemMsg.setSessionId(session.getId());
         systemMsg.setSenderName("System");
         systemMsg.setContent("--- SESSION EXTENDED BY USER (+" + extraMinutes + " Rounds) ---");
         systemMsg.setAi(false); // Or true, but SenderName System logic is key
@@ -139,7 +135,6 @@ public class DiscussionService {
         return sessionRepository.save(session);
     }
 
-    @Transactional
     public Message endSessionEarly(String sessionId) {
         Session session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found"));
@@ -161,7 +156,6 @@ public class DiscussionService {
         return summaryMsg;
     }
 
-    @Transactional
     public Message proceedWithConversation(String sessionId) {
         Session session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found"));
@@ -259,6 +253,16 @@ public class DiscussionService {
         return null;
     }
 
+    public void deleteSession(String sessionId) {
+        if (!sessionRepository.existsById(sessionId)) {
+            throw new RuntimeException("Session not found");
+        }
+        // Delete related entities first (if cascading is not set)
+        messageRepository.deleteBySessionId(sessionId);
+        agentRepository.deleteBySessionId(sessionId);
+        sessionRepository.deleteById(sessionId);
+    }
+
     private String getInstructionForRound(int turnNumber, int totalTurns) {
         // Dynamic Phases based on percentages of total turns
 
@@ -276,7 +280,6 @@ public class DiscussionService {
         }
     }
 
-    @Transactional
     public Message triggerAgentResponse(String sessionId, AgentRole role) {
         return triggerAgentResponseWithOverride(sessionId, role, null);
     }
@@ -320,7 +323,6 @@ public class DiscussionService {
         return false;
     }
 
-    @Transactional
     public Message triggerAgentResponseWithOverride(String sessionId, AgentRole role, String instructionOverride) {
         Session session = sessionRepository.findById(sessionId).orElseThrow();
 
@@ -398,7 +400,7 @@ public class DiscussionService {
         aiResponseText = aiResponseText.trim();
 
         Message aiMsg = new Message();
-        aiMsg.setSession(session);
+        aiMsg.setSessionId(session.getId());
         aiMsg.setSenderName(agent.getName());
         aiMsg.setContent(aiResponseText);
         aiMsg.setAi(true);
@@ -424,7 +426,7 @@ public class DiscussionService {
 
     private Agent createAgent(Session session, String name, AgentRole role, String prompt) {
         Agent agent = new Agent();
-        agent.setSession(session);
+        agent.setSessionId(session.getId());
         agent.setName(name);
         agent.setRole(role);
         agent.setSystemPrompt(prompt);

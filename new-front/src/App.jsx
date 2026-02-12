@@ -3,17 +3,22 @@ import './App.css';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { jsPDF } from "jspdf";
+import autoTable from 'jspdf-autotable';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from "docx";
 import { saveAs } from "file-saver";
+
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 import {
   Send, User, Bot, Gavel, Sparkles, Play,
   RefreshCw, PauseCircle, PlayCircle, Clock, AlertCircle,
-  ArrowRight, Download, FileText, File, Paperclip, X, History, Copy, Check
+  ArrowRight, Download, FileText, File, Paperclip, X, History, Copy, Check, Trash2,
+  ChevronDown, ChevronUp, Info
 } from 'lucide-react';
 
-const API_BASE_URL = "http://localhost:8080/api/discussion";
-
+const API_BASE_URL = `http://${window.location.hostname}:8080/api/discussion`;
+//daiyan
 // --- COUNTDOWN TIMER ---
 // --- TURN PROGRESS INDICATOR ---
 const TurnProgress = ({ currentTurn, maxTurns, stopped }) => {
@@ -50,59 +55,6 @@ const MessageBubble = ({ message }) => {
     return "bubble-default";
   };
 
-  const formatMessageContent = (text) => {
-    if (!text) return null;
-    return text.split('\n').map((line, index) => {
-      if (!line.trim()) return <div key={index} className="spacer"></div>;
-      if (line.trim().startsWith('**') && line.trim().endsWith('**') && line.length < 60) {
-        return <h3 key={index} className="msg-header">{line.replace(/\*\*/g, '')}</h3>;
-      }
-      if ((line.includes('**') && line.trim().endsWith(':')) || line.includes('Action Plan')) {
-        return <div key={index} className="msg-subheader">{line.replace(/\*\*/g, '')}</div>;
-      }
-      const listMatch = line.match(/^(\d+)\.\s(.+)/);
-      if (listMatch) {
-        const content = listMatch[2];
-        const parts = content.split(/(\*\*.*?\*\*)/g);
-        return (
-          <div key={index} className="msg-list-item">
-            <span className="list-number">{listMatch[1]}.</span>
-            <span className="list-content">
-              {parts.map((part, i) => {
-                if (part.startsWith('**') && part.endsWith('**')) return <strong key={i} className="highlight-text">{part.slice(2, -2)}</strong>;
-                return part;
-              })}
-            </span>
-          </div>
-        );
-      }
-      if (line.trim().startsWith('* ')) {
-        const content = line.trim().substring(2);
-        const parts = content.split(/(\*\*.*?\*\*)/g);
-        return (
-          <div key={index} className="msg-list-item">
-            <span className="list-arrow"><ArrowRight size={16} strokeWidth={3} /></span>
-            <span className="list-content">
-              {parts.map((part, i) => {
-                if (part.startsWith('**') && part.endsWith('**')) return <strong key={i} className="highlight-text">{part.slice(2, -2)}</strong>;
-                return part;
-              })}
-            </span>
-          </div>
-        );
-      }
-      const parts = line.split(/(\*\*.*?\*\*)/g);
-      return (
-        <div key={index} className="msg-text">
-          {parts.map((part, i) => {
-            if (part.startsWith('**') && part.endsWith('**')) return <strong key={i}>{part.slice(2, -2)}</strong>;
-            return part;
-          })}
-        </div>
-      );
-    });
-  };
-
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -110,6 +62,10 @@ const MessageBubble = ({ message }) => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // Pre-process content to upgrade "Bold Lines" to Headers for better styling
+  // e.g. "**Project Name:**" -> "### Project Name"
+  const processedContent = message.content.replace(/^(\s*)\*\*(.+?)\*\*:?$/gm, '$1### $2');
 
   return (
     <div className={`message-row ${isUser ? 'user-row' : 'ai-row'}`}>
@@ -122,8 +78,10 @@ const MessageBubble = ({ message }) => {
             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
-        <div className={`message-content ${isUser ? 'content-user' : 'content-ai'}`}>
-          {formatMessageContent(message.content)}
+        <div className={`message-content ${isUser ? 'content-user' : 'content-ai'} markdown-body`}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {processedContent}
+          </ReactMarkdown>
         </div>
 
         {/* Copy Button */}
@@ -176,6 +134,20 @@ const HistoryModal = ({ onClose, onLoadSession }) => {
     return true;
   });
 
+  const deleteSession = async (sessionId) => {
+    if (!window.confirm("Are you sure you want to delete this session? This cannot be undone.")) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/session/${sessionId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setSessions(prev => prev.filter(s => s.id !== sessionId));
+      } else {
+        alert("Failed to delete session.");
+      }
+    } catch (e) {
+      alert("Error deleting session.");
+    }
+  };
+
   return (
     <div className="modal-overlay">
       <div className="modal-content">
@@ -225,14 +197,23 @@ const HistoryModal = ({ onClose, onLoadSession }) => {
         {loading ? <div className="loading-spinner"><RefreshCw className="icon-spin" /> Loading...</div> : (
           <div className="session-list">
             {filteredSessions.length === 0 ? <p className="empty-state">No matching sessions.</p> : filteredSessions.map(s => (
-              <div key={s.id} className="session-item" onClick={() => onLoadSession(s)}>
-                <div className="session-info">
+              <div key={s.id} className="session-item">
+                <div className="session-info" onClick={() => onLoadSession(s)} style={{ cursor: 'pointer', flex: 1 }}>
                   <h3>{s.topic}</h3>
                   <span className="session-date">{new Date(s.createdAt).toLocaleDateString()} {new Date(s.createdAt).toLocaleTimeString()}</span>
                   <span className={`status-badge-sm ${s.mode === 'DEBATE' ? 'debate-bg' : 'collab-bg'}`}>{s.mode}</span>
                   {s.fileName && <span className="file-badge"><Paperclip size={10} /> {s.fileName}</span>}
                 </div>
-                <ArrowRight size={18} className="arrow-icon" />
+                <div className="session-actions">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
+                    className="delete-btn"
+                    title="Delete Session"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                  <ArrowRight size={18} className="arrow-icon" onClick={() => onLoadSession(s)} />
+                </div>
               </div>
             ))}
           </div>
@@ -255,6 +236,8 @@ export default function App() {
   const [isFinishingEarly, setIsFinishingEarly] = useState(false);
   const [showDownloads, setShowDownloads] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [mobileInfoOpen, setMobileInfoOpen] = useState(false);
+  const [mobileInfoTab, setMobileInfoTab] = useState('debate');
 
   const [topic, setTopic] = useState("Artificial Intelligence will replace programmers");
   const [instructions, setInstructions] = useState("");
@@ -312,7 +295,7 @@ export default function App() {
           }
         } catch (error) { console.error(error); }
         finally { setLoadingAgent(null); }
-      }, 4000);
+      }, 2000);
     }
     return () => clearInterval(intervalId);
   }, [isAutoPlaying, session, loadingAgent, isFinishingEarly]);
@@ -442,7 +425,7 @@ export default function App() {
     finally { setLoading(false); }
   };
 
-  // --- DOWNLOADS (UPDATED FOR BETTER PDF FORMATTING) ---
+  // --- DOWNLOADS (UPDATED FOR BETTER PDF FORMATTING + AUTOTABLE) ---
   const downloadPDF = () => {
     const doc = new jsPDF();
     const pageHeight = doc.internal.pageSize.height;
@@ -481,50 +464,168 @@ export default function App() {
       doc.text(`${msg.senderName} [${timeStr}]:`, margin, yPos);
       yPos += 6;
 
-      // Content Parsing
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.setTextColor(50);
+      // Pre-process: Upgrade bold lines to headers (Expanded Regex to allow optional colon)
+      let content = msg.content.replace(/^(\s*)\*\*(.+?)\*\*:?$/gm, '$1### $2');
 
-      const lines = msg.content.split('\n');
-      lines.forEach(line => {
-        if (!line.trim()) { yPos += 3; return; }
+      const lines = content.split('\n');
 
-        let indent = margin;
+      let tableBuffer = [];
+      let inTable = false;
+
+      const renderTable = () => {
+        if (tableBuffer.length === 0) return;
+
+        // Parse Markdown Table
+        // remove separator row (contains ---)
+        const filteredRows = tableBuffer.filter(row => !row.includes('---'));
+
+        if (filteredRows.length === 0) return;
+
+        const tableData = filteredRows.map(row => {
+          // split by | and remove empty first/last if consistent
+          return row.split('|').filter((cell, i, arr) => {
+            // Keep cell if it's not the empty start/end created by |row| logic
+            // Simple heuristic: trim and check
+            if (i === 0 && cell.trim() === '') return false;
+            if (i === arr.length - 1 && cell.trim() === '') return false;
+            return true;
+          }).map(c => c.trim().replace(/\*\*/g, '')); // Clean bold markers
+        });
+
+        if (tableData.length > 0) {
+          const head = [tableData[0]];
+          const body = tableData.slice(1);
+
+          autoTable(doc, {
+            startY: yPos,
+            head: head,
+            body: body,
+            margin: { left: margin },
+            styles: { fontSize: 9, cellPadding: 3 },
+            headStyles: { fillColor: [50, 229, 207], textColor: 255, fontStyle: 'bold' }, // Teal Header
+            theme: 'grid'
+          });
+
+          yPos = doc.lastAutoTable.finalY + 10; // Update Y pos
+        }
+
+        tableBuffer = [];
+        inTable = false;
+      };
+
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
         let text = line.trim();
-        let isBold = false;
-        let isHeader = false;
+
+        // Table Detection
+        if (text.startsWith('|')) {
+          inTable = true;
+          tableBuffer.push(text);
+          continue; // Skip immediate printing
+        } else if (inTable) {
+          // End of table block found
+          renderTable();
+        }
+
+        if (!text) { yPos += 3; continue; }
+
+        // Horizontal Rule Detection (---)
+        if (text === '---' || text === '***' || text === '___') {
+          yPos += 2;
+          doc.setDrawColor(200); // Light Grey
+          doc.setLineWidth(0.5);
+          doc.line(margin, yPos, 210 - margin, yPos);
+          yPos += 8;
+          continue;
+        }
+
+        // Normal Line Processing (Same as before)
+        let indent = margin;
+        let headingLevel = 0; // 0=Body, 1=H1, 2=H2, 3=H3
 
         // Detect Formatting
-        if (text.startsWith('###') || (text.startsWith('**') && text.endsWith('**') && text.length < 50)) {
-          isHeader = true;
-          text = text.replace(/###/g, '').replace(/\*\*/g, '').trim();
-        } else if (text.match(/^\d+\./) || text.startsWith('- ')) {
+        if (text.startsWith('# ')) { headingLevel = 1; text = text.replace('# ', '').trim(); }
+        else if (text.startsWith('## ')) { headingLevel = 2; text = text.replace('## ', '').trim(); }
+        else if (text.startsWith('### ')) { headingLevel = 3; text = text.replace(/^###\s*/, '').trim(); }
+        else if (text.match(/^\d+\./) || text.startsWith('- ')) {
           indent = margin + 5; // Indent lists
         }
 
-        // Clean text for PDF (simple bold stripping for body to avoid alignment issues)
-        const cleanText = text.replace(/\*\*/g, '');
+        const handleTextPart = (str, isBold) => {
+          // Font Styles
+          if (headingLevel === 1) {
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(50, 229, 207); // Teal
+          } else if (headingLevel === 2) {
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(255, 111, 145); // Pink
+          } else if (headingLevel === 3) {
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(243, 198, 35); // Gold
+          } else if (isBold) {
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(74, 222, 128); // Green
+          } else {
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(50); // Default Grey
+          }
+          return str;
+        };
 
-        // Font Styles
-        if (isHeader) {
-          doc.setFont("helvetica", "bold");
-          doc.setTextColor(79, 70, 229); // Accent color for headers
+        const parts = text.split(/(\*\*.*?\*\*)/g);
+
+        if (headingLevel > 0) {
+          handleTextPart(text, false);
+          doc.text(text.replace(/\*\*/g, ''), indent, yPos);
         } else {
-          doc.setFont("helvetica", "normal");
-          doc.setTextColor(50);
+          // Mixed Style Text Wrapping Logic
+          let xOffset = indent;
+          const maxWidth = 190 - margin; // A4 width is ~210mm
+
+          parts.forEach(part => {
+            let chunk = part;
+            let isBold = false;
+            if (chunk.startsWith('**') && chunk.endsWith('**')) {
+              chunk = chunk.slice(2, -2);
+              isBold = true;
+            }
+
+            // Set font style for width calculation
+            handleTextPart(chunk, isBold);
+
+            // Allow splitting by words
+            const words = chunk.split(' ');
+
+            words.forEach((word, index) => {
+              const wordWithSpace = word + (index < words.length - 1 ? ' ' : '');
+              const wordWidth = doc.getTextWidth(wordWithSpace);
+
+              if (xOffset + wordWidth > maxWidth) {
+                yPos += 5; // New Line
+                if (yPos > pageHeight - 15) {
+                  doc.addPage();
+                  yPos = 20;
+                }
+                xOffset = margin;
+              }
+
+              doc.text(wordWithSpace, xOffset, yPos);
+              xOffset += wordWidth;
+            });
+          });
         }
 
-        const splitText = doc.splitTextToSize(cleanText, maxLineWidth - (indent - margin));
+        yPos += 5; // Line height
 
-        if (yPos + (splitText.length * 5) > pageHeight - 15) {
+        if (yPos > pageHeight - 15) {
           doc.addPage();
           yPos = 20;
         }
+      }
 
-        doc.text(splitText, indent, yPos);
-        yPos += (splitText.length * 5) + 1;
-      });
+      // Flush any remaining table at end of message matches
+      if (inTable) renderTable();
+
       yPos += 6;
     });
 
@@ -548,18 +649,26 @@ export default function App() {
         spacing: { before: 200, after: 100 }
       }));
 
+      // Pre-process
+      const content = msg.content.replace(/^(\s*)\*\*(.+?)\*\*:?$/gm, '$1### $2');
+
       // Content Parsing
-      const lines = msg.content.split('\n');
+      const lines = content.split('\n');
       lines.forEach(line => {
         if (!line.trim()) { children.push(new Paragraph({ text: "" })); return; }
 
-        let isHeader = false;
         let indentLevel = 0;
         let cleanLine = line.trim();
+        let headingStyle = undefined;
+        let headingColor = undefined; // Hex no hash
 
-        if (cleanLine.startsWith('###')) {
-          isHeader = true;
-          cleanLine = cleanLine.replace(/###/g, '').trim();
+        // Detect Headers
+        if (cleanLine.startsWith('# ')) {
+          headingStyle = HeadingLevel.HEADING_1; cleanLine = cleanLine.replace('# ', ''); headingColor = "32E5CF"; // Teal
+        } else if (cleanLine.startsWith('## ')) {
+          headingStyle = HeadingLevel.HEADING_2; cleanLine = cleanLine.replace('## ', ''); headingColor = "FF6F91"; // Pink
+        } else if (cleanLine.startsWith('### ')) {
+          headingStyle = HeadingLevel.HEADING_3; cleanLine = cleanLine.replace('### ', ''); headingColor = "F3C623"; // Gold
         }
 
         // Detect List
@@ -571,14 +680,25 @@ export default function App() {
         const parts = cleanLine.split(/(\*\*.*?\*\*)/g);
         const textRuns = parts.map(part => {
           if (part.startsWith('**') && part.endsWith('**')) {
-            return new TextRun({ text: part.slice(2, -2), bold: true, size: isHeader ? 24 : 22 });
+            // If it's a heading line, use heading color, else use Green
+            return new TextRun({
+              text: part.slice(2, -2),
+              bold: true,
+              size: headingStyle ? 24 : 22,
+              color: headingStyle ? headingColor : "4ADE80" // Green for bold body text
+            });
           }
-          return new TextRun({ text: part, size: isHeader ? 24 : 22 });
+          // Normal Text
+          return new TextRun({
+            text: part,
+            size: headingStyle ? 24 : 22,
+            color: headingStyle ? headingColor : "auto"
+          });
         });
 
         children.push(new Paragraph({
           children: textRuns,
-          heading: isHeader ? HeadingLevel.HEADING_3 : undefined,
+          heading: headingStyle,
           indent: { left: indentLevel * 720 }, // 0.5 inch indent
           spacing: { after: 100 }
         }));
@@ -593,10 +713,100 @@ export default function App() {
 
   if (!session) return (
     <div className="landing-page">
+      {/* --- MOBILE-ONLY DROPDOWN --- */}
+      <div className="mobile-info-dropdown">
+        <button className="mobile-info-trigger" onClick={() => setMobileInfoOpen(!mobileInfoOpen)}>
+          <Info size={18} />
+          <span>About & How to Use</span>
+          {mobileInfoOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </button>
+        {mobileInfoOpen && (
+          <div className="mobile-info-content">
+            <div className="mobile-info-tabs">
+              <button
+                className={`mobile-info-tab ${mobileInfoTab === 'debate' ? 'active-tab-debate' : ''}`}
+                onClick={() => setMobileInfoTab('debate')}
+              >
+                <Gavel size={16} /> Debate Mode
+              </button>
+              <button
+                className={`mobile-info-tab ${mobileInfoTab === 'collab' ? 'active-tab-collab' : ''}`}
+                onClick={() => setMobileInfoTab('collab')}
+              >
+                <Sparkles size={16} /> Collab Mode
+              </button>
+            </div>
+
+            {mobileInfoTab === 'debate' ? (
+              <div className="mobile-info-body">
+                <p className="instruction-desc"><strong>Setup a Clash.</strong> Best for evaluating decisions or controversial topics.</p>
+                <ul className="instruction-steps">
+                  <li><strong>1. Topic:</strong> Enter a clear statement or upload a doc to analyze.</li>
+                  <li><strong>2. Turns:</strong> Set <strong>12-20 turns</strong> for a deep discussion.</li>
+                  <li><strong>3. Flow:</strong> Pro & Con agents argue, then a Judge delivers the verdict.</li>
+                </ul>
+                <div className="file-instruction-box">
+                  <p><strong>📎 Context Mode:</strong> Attach a PDF/Docx to unlock the <strong>Instructions</strong> field.</p>
+                </div>
+                <div className="agent-roster">
+                  <h4><User size={14} /> Meet the Squad</h4>
+                  <div className="agent-item"><span className="agent-name pro">ProBot</span> The Optimist</div>
+                  <div className="agent-item"><span className="agent-name con">ConBot</span> The Skeptic</div>
+                  <div className="agent-item"><span className="agent-name judge">JudgeDredd</span> The Decider</div>
+                </div>
+              </div>
+            ) : (
+              <div className="mobile-info-body">
+                <p className="instruction-desc"><strong>Build a Solution.</strong> Best for brainstorming, planning, or creative writing.</p>
+                <ul className="instruction-steps">
+                  <li><strong>1. Topic:</strong> Describe your goal or problem clearly.</li>
+                  <li><strong>2. Turns:</strong> Set <strong>16+ turns</strong> for enough refinement time.</li>
+                  <li><strong>3. Flow:</strong> Agents brainstorm, critique, and build a comprehensive solution.</li>
+                </ul>
+                <div className="file-instruction-box">
+                  <p><strong>📎 Context Mode:</strong> Attach a file to ground the brainstorm. Use <strong>Instructions</strong> to focus the swarm.</p>
+                </div>
+                <div className="agent-roster">
+                  <h4><User size={14} /> Meet the Squad</h4>
+                  <div className="agent-item"><span className="agent-name idea">IdeaSpark</span> The Creative</div>
+                  <div className="agent-item"><span className="agent-name logic">LogicLens</span> The Analyst</div>
+                  <div className="agent-item"><span className="agent-name wrap">WrapUp</span> The Closer</div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="landing-side left">
+        <div className="instruction-card debate-card">
+          <h3><Gavel size={28} className="icon-debate" /> How to Debate</h3>
+          <p className="instruction-desc"><strong>Setup a Clash.</strong> Best for evaluating decisions or controversial topics.</p>
+          <ul className="instruction-steps">
+            <li><strong>1. Topic:</strong> Enter a clear statement (e.g., "Remote work is better") or upload a doc to analyze.</li>
+            <li><strong>2. Turns:</strong> Set <strong>12-20 turns</strong> for a deep, balanced discussion.</li>
+            <li><strong>3. Flow:</strong> Pro & Con agents argue, then a Judge delivers the final verdict.</li>
+          </ul>
+
+          <div className="file-instruction-box">
+            <p><strong>📎 Context Mode:</strong> Attach a PDF/Docx to unlock the <strong>Instructions</strong> field. Tell agents exactly what to analyze (e.g., <em>"Find legal loopholes in this contract"</em>).</p>
+          </div>
+
+          <div className="agent-roster">
+            <h4><User size={14} /> Meet the Squad</h4>
+            <div className="agent-item"><span className="agent-name pro">ProBot</span> The Optimist</div>
+            <div className="agent-item"><span className="agent-name con">ConBot</span> The Skeptic</div>
+            <div className="agent-item"><span className="agent-name judge">JudgeDredd</span> The Decider</div>
+          </div>
+        </div>
+      </div>
+
       <div className="landing-panel">
         <div className="landing-header">
-          <button className="history-btn-top" onClick={() => setShowHistory(true)} title="History"><History size={24} /></button>
-          <h1 className="landing-title">PolyArguMinds</h1>
+          <div className="title-wrapper">
+            <h1 className="landing-title">PolyArguMinds</h1>
+            <button className="history-btn-inline" onClick={() => setShowHistory(true)} title="History"><History size={24} /></button>
+          </div>
           <p className="landing-subtitle">The Multi-Agent AI Arena</p>
         </div>
         <div className="landing-controls">
@@ -648,6 +858,30 @@ export default function App() {
           <button onClick={startSession} disabled={loading || (!topic && !selectedFile)} className="start-session-button">{loading ? <RefreshCw className="icon-spin" /> : <Play fill="currentColor" />} Start</button>
         </div>
       </div>
+
+      <div className="landing-side right">
+        <div className="instruction-card collab-card">
+          <h3><Sparkles size={28} className="icon-collab" /> How to Collab</h3>
+          <p className="instruction-desc"><strong>Build a Solution.</strong> Best for brainstorming, planning, or creative writing.</p>
+          <ul className="instruction-steps">
+            <li><strong>1. Topic:</strong> Describe your goal or problem clearly (e.g., "Plan a marketing campaign").</li>
+            <li><strong>2. Turns:</strong> Set <strong>16+ turns</strong> to allow enough time for refinement.</li>
+            <li><strong>3. Flow:</strong> Agents brainstorm, critique, and build a comprehensive solution together.</li>
+          </ul>
+
+          <div className="file-instruction-box">
+            <p><strong>📎 Context Mode:</strong> Attach a file to ground the brainstorm. Use <strong>Instructions</strong> to focus the swarm (e.g., <em>"Analyze this data and propose a strategy"</em>).</p>
+          </div>
+
+          <div className="agent-roster">
+            <h4><User size={14} /> Meet the Squad</h4>
+            <div className="agent-item"><span className="agent-name idea">IdeaSpark</span> The Creative</div>
+            <div className="agent-item"><span className="agent-name logic">LogicLens</span> The Analyst</div>
+            <div className="agent-item"><span className="agent-name wrap">WrapUp</span> The Closer</div>
+          </div>
+        </div>
+      </div>
+
       {showHistory && <HistoryModal onClose={() => setShowHistory(false)} onLoadSession={loadHistorySession} />}
     </div>
   );
@@ -680,7 +914,7 @@ export default function App() {
         <div className="chat-header-right">
           <div style={{ position: 'relative' }}>
             <button onClick={() => setShowDownloads(!showDownloads)} className="header-toggle-button" title="Download">
-              <Download size={18} /> Download
+              <Download size={18} /> <span>Download</span>
             </button>
             {showDownloads && (
               <div style={{
@@ -688,8 +922,8 @@ export default function App() {
                 border: '1px solid #e2e8f0', borderRadius: '12px', padding: '5px',
                 boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', display: 'flex', flexDirection: 'column', gap: '5px', zIndex: 50
               }}>
-                <button onClick={downloadPDF} className="header-toggle-button" style={{ justifyContent: 'flex-start', border: 'none' }}><FileText size={16} /> PDF</button>
-                <button onClick={downloadDOC} className="header-toggle-button" style={{ justifyContent: 'flex-start', border: 'none' }}><File size={16} /> DOCX</button>
+                <button onClick={downloadPDF} className="header-toggle-button" style={{ justifyContent: 'flex-start', border: 'none' }}><FileText size={16} /> <span>PDF</span></button>
+                <button onClick={downloadDOC} className="header-toggle-button" style={{ justifyContent: 'flex-start', border: 'none' }}><File size={16} /> <span>DOCX</span></button>
               </div>
             )}
           </div>
@@ -700,8 +934,9 @@ export default function App() {
               disabled={isFinishingEarly}
               className="header-toggle-button"
               style={{ color: '#b91c1c', borderColor: '#fecaca', background: '#fef2f2' }}
+              title="End & Summarize"
             >
-              End & Summarize
+              <AlertCircle size={18} /> <span>End & Summarize</span>
             </button>
           )}
 
@@ -710,10 +945,11 @@ export default function App() {
             onClick={() => setIsAutoPlaying(!isAutoPlaying)}
             disabled={isFinishingEarly || session.status === 'COMPLETED'}
             className="header-toggle-button"
+            title={isAutoPlaying ? "Pause" : "Resume"}
           >
-            {isAutoPlaying ? <PauseCircle size={18} /> : <PlayCircle size={18} />} {isAutoPlaying ? "Pause" : "Resume"}
+            {isAutoPlaying ? <PauseCircle size={18} /> : <PlayCircle size={18} />} <span>{isAutoPlaying ? "Pause" : "Resume"}</span>
           </button>
-          <button onClick={() => { setSession(null); setIsAutoPlaying(false); }} className="header-exit-button">Exit</button>
+          <button onClick={() => { setSession(null); setIsAutoPlaying(false); }} className="header-exit-button" title="Exit"><X size={18} /> <span>Exit</span></button>
         </div>
       </header>
 

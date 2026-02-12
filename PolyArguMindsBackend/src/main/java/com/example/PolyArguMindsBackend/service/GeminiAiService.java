@@ -18,10 +18,41 @@ public class GeminiAiService {
 
     // Configuration for OpenRouter (OpenAI Compatible)
     private static final String API_URL = "https://openrouter.ai/api/v1/chat/completions";
-    private static final String MODEL_NAME = "liquid/lfm-2.5-1.2b-instruct:free";
-    private static final String API_KEY = "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";
+
+    @org.springframework.beans.factory.annotation.Value("${gemini.model}")
+    private String modelName;
+
+    @org.springframework.beans.factory.annotation.Value("${gemini.api.key.pro}")
+    private String apiKeyPro;
+
+    @org.springframework.beans.factory.annotation.Value("${gemini.api.key.con}")
+    private String apiKeyCon;
+
+    @org.springframework.beans.factory.annotation.Value("${gemini.api.key.judge}")
+    private String apiKeyJudge;
+
+    @org.springframework.beans.factory.annotation.Value("${gemini.api.key.default}")
+    private String apiKeyDefault;
 
     public String generateResponse(String systemPrompt, List<Message> history, AgentRole role) {
+
+        // Determine API Key based on Role
+        String currentApiKey = apiKeyDefault;
+        if (role != null) {
+            switch (role) {
+                case PRO:
+                    currentApiKey = apiKeyPro;
+                    break;
+                case CON:
+                    currentApiKey = apiKeyCon;
+                    break;
+                case JUDGE:
+                    currentApiKey = apiKeyJudge;
+                    break;
+                default:
+                    currentApiKey = apiKeyDefault;
+            }
+        }
 
         // 1. Construct the Conversation Context
         StringBuilder fullContext = new StringBuilder();
@@ -45,7 +76,7 @@ public class GeminiAiService {
 
         // 2. Build JSON Payload for OpenRouter/OpenAI
         Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", MODEL_NAME);
+        requestBody.put("model", modelName);
 
         // OpenRouter uses 'messages' array
         List<Map<String, String>> messages = new ArrayList<>();
@@ -60,7 +91,7 @@ public class GeminiAiService {
         // 3. Send Request
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Authorization", "Bearer " + API_KEY);
+        headers.set("Authorization", "Bearer " + currentApiKey);
         // OpenRouter optional headers
         headers.set("HTTP-Referer", "http://localhost:5173");
         headers.set("X-Title", "PolyArguMinds");
@@ -68,7 +99,7 @@ public class GeminiAiService {
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
         try {
-            System.out.println("🚀 Sending Prompt to OpenRouter (" + MODEL_NAME + ")...\n");
+            System.out.println("🚀 Sending Prompt to OpenRouter (" + modelName + ")...\n");
 
             ResponseEntity<Map> response = restTemplate.postForEntity(API_URL, entity, Map.class);
             return extractTextFromOpenRouterResponse(response.getBody());

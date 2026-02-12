@@ -1,57 +1,83 @@
 package com.example.PolyArguMindsBackend.model;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "messages")
+@Document(collection = "messages")
 public class Message {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Column(name = "sender_name", nullable = false)
+    @Field("sender_name")
     private String senderName;
 
-    @Column(nullable = false, columnDefinition = "LONGTEXT")
+    @Field("content")
     private String content;
 
-    @Column(name = "is_ai")
+    @Field("is_ai")
     private boolean isAi;
 
-    private LocalDateTime timestamp;
+    @Field("timestamp")
+    private LocalDateTime timestamp = LocalDateTime.now();
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "session_id", nullable = false)
-    @JsonBackReference // Stops infinite recursion (Back link to Session)
-    private Session session;
+    @Field("session_id")
+    private String sessionId;
 
-    @PrePersist
-    protected void onCreate() {
+    public Message() {
         this.timestamp = LocalDateTime.now();
     }
 
     // --- STANDARD GETTERS AND SETTERS ---
 
-    public Message() {}
+    public String getId() {
+        return id;
+    }
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public void setId(String id) {
+        this.id = id;
+    }
 
-    public String getSenderName() { return senderName; }
-    public void setSenderName(String senderName) { this.senderName = senderName; }
+    public String getSenderName() {
+        return senderName;
+    }
 
-    public String getContent() { return content; }
-    public void setContent(String content) { this.content = content; }
+    public void setSenderName(String senderName) {
+        this.senderName = senderName;
+    }
 
-    public boolean isAi() { return isAi; }
-    public void setAi(boolean isAi) { this.isAi = isAi; }
+    public String getContent() {
+        return content;
+    }
 
-    public LocalDateTime getTimestamp() { return timestamp; }
-    public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+    public void setContent(String content) {
+        this.content = content;
+    }
 
-    public Session getSession() { return session; }
-    public void setSession(Session session) { this.session = session; }
+    public boolean isAi() {
+        return isAi;
+    }
+
+    public void setAi(boolean isAi) {
+        this.isAi = isAi;
+    }
+
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(LocalDateTime timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(String sessionId) {
+        this.sessionId = sessionId;
+    }
 }

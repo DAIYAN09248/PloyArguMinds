@@ -137,4 +137,15 @@ public class DiscussionController {
     public ResponseEntity<List<Message>> getHistory(@PathVariable String sessionId) {
         return ResponseEntity.ok(discussionService.getHistory(sessionId));
     }
+
+    // --- DELETE SESSION ---
+    @DeleteMapping("/session/{sessionId}")
+    public ResponseEntity<Void> deleteSession(@PathVariable String sessionId) {
+        try {
+            discussionService.deleteSession(sessionId);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }

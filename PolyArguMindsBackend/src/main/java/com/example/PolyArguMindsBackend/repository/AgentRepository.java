@@ -1,13 +1,18 @@
 package com.example.PolyArguMindsBackend.repository;
 
 import com.example.PolyArguMindsBackend.model.Agent;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.example.PolyArguMindsBackend.model.enums.AgentRole;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
-// Changed <Agent, Long> to <Agent, String>
 @Repository
-public interface AgentRepository extends JpaRepository<Agent, String> {
+public interface AgentRepository extends MongoRepository<Agent, String> {
     List<Agent> findBySessionId(String sessionId);
+
+    Optional<Agent> findBySessionIdAndRole(String sessionId, AgentRole role);
+
+    void deleteBySessionId(String sessionId);
 }

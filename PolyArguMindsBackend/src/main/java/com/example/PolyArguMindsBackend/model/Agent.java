@@ -1,48 +1,70 @@
 package com.example.PolyArguMindsBackend.model;
 
 import com.example.PolyArguMindsBackend.model.enums.AgentRole;
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-@Entity
-@Table(name = "agents")
+@Document(collection = "agents")
 public class Agent {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Column(nullable = false)
+    @Field("name")
     private String name;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Field("role")
     private AgentRole role;
 
-    @Column(name = "system_prompt", columnDefinition = "TEXT")
+    @Field("system_prompt")
     private String systemPrompt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "session_id", nullable = false)
-    @JsonBackReference
-    private Session session;
+    @Field("session_id")
+    private String sessionId;
 
     // --- STANDARD GETTERS AND SETTERS ---
 
-    public Agent() {}
+    public Agent() {
+    }
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+    public String getId() {
+        return id;
+    }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public void setId(String id) {
+        this.id = id;
+    }
 
-    public AgentRole getRole() { return role; }
-    public void setRole(AgentRole role) { this.role = role; }
+    public String getName() {
+        return name;
+    }
 
-    public String getSystemPrompt() { return systemPrompt; }
-    public void setSystemPrompt(String systemPrompt) { this.systemPrompt = systemPrompt; }
+    public void setName(String name) {
+        this.name = name;
+    }
 
-    public Session getSession() { return session; }
-    public void setSession(Session session) { this.session = session; }
+    public AgentRole getRole() {
+        return role;
+    }
+
+    public void setRole(AgentRole role) {
+        this.role = role;
+    }
+
+    public String getSystemPrompt() {
+        return systemPrompt;
+    }
+
+    public void setSystemPrompt(String systemPrompt) {
+        this.systemPrompt = systemPrompt;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(String sessionId) {
+        this.sessionId = sessionId;
+    }
 }

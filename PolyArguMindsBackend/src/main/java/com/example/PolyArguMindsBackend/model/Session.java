@@ -2,78 +2,58 @@ package com.example.PolyArguMindsBackend.model;
 
 import com.example.PolyArguMindsBackend.model.enums.SessionMode;
 import com.example.PolyArguMindsBackend.model.enums.SessionStatus;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
-@Entity
-@Table(name = "sessions")
+@Document(collection = "sessions")
 public class Session {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Field("topic")
     private String topic;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Field("mode")
     private SessionMode mode;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Field("status")
     private SessionStatus status;
 
-    @Column(name = "start_time")
+    @Field("start_time")
     private LocalDateTime startTime;
 
-    @Column(name = "end_time")
+    @Field("end_time")
     private LocalDateTime endTime;
 
-    @Column(name = "max_turns")
+    @Field("max_turns")
     private Integer maxTurns;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    @Field("created_at")
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     // --- FILE PERSISTENCE ---
-    @Column(name = "file_name")
+    @Field("file_name")
     private String fileName;
 
-    @Column(name = "file_type")
+    @Field("file_type")
     private String fileType;
 
-    @Lob
-    @Column(name = "file_data", columnDefinition = "LONGBLOB")
+    @Field("file_data")
     private byte[] fileData;
 
-    // Relationships
-    // JsonManagedReference prevents infinite recursion loops when converting to
-    // JSON
-    @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonManagedReference
-    private List<Agent> agents = new ArrayList<>();
-
-    @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonManagedReference
-    private List<Message> messages = new ArrayList<>();
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        if (this.status == null) {
-            this.status = SessionStatus.CREATED;
-        }
-    }
-
-    // --- STANDARD GETTERS AND SETTERS (No Lombok) ---
+    // Relationships removed for MongoDB referencing pattern
+    // Agents and Messages will store sessionId
 
     public Session() {
+        this.status = SessionStatus.CREATED;
+        this.createdAt = LocalDateTime.now();
     }
+
+    // --- STANDARD GETTERS AND SETTERS ---
 
     public String getId() {
         return id;
@@ -137,22 +117,6 @@ public class Session {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
-    }
-
-    public List<Agent> getAgents() {
-        return agents;
-    }
-
-    public void setAgents(List<Agent> agents) {
-        this.agents = agents;
-    }
-
-    public List<Message> getMessages() {
-        return messages;
-    }
-
-    public void setMessages(List<Message> messages) {
-        this.messages = messages;
     }
 
     public String getFileName() {
