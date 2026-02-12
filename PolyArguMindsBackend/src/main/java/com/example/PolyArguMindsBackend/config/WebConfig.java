@@ -10,8 +10,11 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**") // Apply to all endpoints
-                .allowedOrigins("http://localhost:5173", "http://localhost:3000", "*") // Explicitly allow frontend
-                                                                                       // origin
+                .allowedOrigins(
+                        "http://localhost:5173",
+                        "http://localhost:3000",
+                        "https://ployarguminds.onrender.com",
+                        "*")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS") // Explicitly allow DELETE
                 .allowedHeaders("*")
                 .allowCredentials(false) // Set to true if you strictly specify origins (not *)

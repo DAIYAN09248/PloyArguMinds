@@ -17,7 +17,9 @@ import {
   ChevronDown, ChevronUp, Info
 } from 'lucide-react';
 
-const API_BASE_URL = `http://${window.location.hostname}:8080/api/discussion`;
+const API_BASE_URL = window.location.hostname === 'localhost'
+  ? `http://localhost:8080/api/discussion`
+  : `https://ployarguminds.onrender.com/api/discussion`;
 //daiyan
 // --- COUNTDOWN TIMER ---
 // --- TURN PROGRESS INDICATOR ---
