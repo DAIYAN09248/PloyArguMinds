@@ -1828,7 +1828,7 @@ body {
   /* Chat Interface Mobile */
   .app-container {
     margin: 0;
-    height: 100vh;
+    height: 100dvh;
     border-radius: 0;
     max-width: 100%;
     display: flex;
@@ -1851,30 +1851,10 @@ body {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
 
-  .chat-area {
-    padding: 1rem;
-    padding-top: 80px;
-    /* offset for fixed header */
-    padding-bottom: 80px;
-    /* offset for fixed input */
-    flex: 1;
-    overflow-y: auto;
-  }
-
-  .chat-input-area {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 200;
-    padding: 0.6rem 0.8rem;
-    background: var(--bg-card);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
   .chat-header-left {
     gap: 8px;
     min-width: 0;
+    flex: 1;
   }
 
   .mode-icon {
@@ -1885,7 +1865,7 @@ body {
     font-size: 0.85rem;
     -webkit-line-clamp: 1;
     line-clamp: 1;
-    max-width: 200px;
+    max-width: 180px;
   }
 
   .chat-header-status {
@@ -1897,6 +1877,7 @@ body {
     gap: 6px;
     flex-wrap: wrap;
     justify-content: flex-end;
+    flex-shrink: 0;
   }
 
   .header-toggle-button,
@@ -1905,6 +1886,9 @@ body {
     font-size: 0.7rem;
     border-radius: 14px;
     gap: 4px;
+    box-shadow:
+      3px 3px 6px rgba(0, 0, 0, 0.3),
+      -3px -3px 6px rgba(255, 255, 255, 0.05);
   }
 
   /* Hide button text on mobile, show only icons */
@@ -1913,18 +1897,143 @@ body {
     display: none;
   }
 
+  /* Chat area — single rule with proper offsets */
   .chat-area {
     padding: 1rem;
+    padding-top: 100px;
+    padding-bottom: 90px;
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
+  .chat-input-area {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    padding: 0.6rem 0.8rem;
+    background: var(--bg-card);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Typing indicator on mobile */
+  .typing-indicator {
+    padding: 8px;
+    margin-bottom: 10px;
+  }
+
+  .typing-bubble {
+    font-size: 0.75rem;
+    padding: 6px 12px;
+  }
+
+  /* Messages */
   .message-bubble {
-    max-width: 90%;
-    padding: 1rem;
+    max-width: 92%;
+    padding: 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  .message-row {
+    gap: 8px;
+  }
+
+  .sender-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.7rem;
+  }
+
+  .sender-name {
+    font-size: 0.75rem;
+  }
+
+  /* Session ended badge */
+  .session-ended {
+    margin-bottom: 10px;
   }
 
   /* Adjust buttons for touch */
   .start-session-button {
     padding: 1rem;
     font-size: 1rem;
+  }
+
+  /* File chip in header */
+  .file-chip {
+    display: none;
+  }
+
+  /* Status badge smaller */
+  .status-badge {
+    font-size: 0.6rem;
+    padding: 2px 6px;
+  }
+}
+
+/* --- SMALL PHONES (480px and below) --- */
+@media (max-width: 480px) {
+  .chat-header-topic h2 {
+    font-size: 0.75rem;
+    max-width: 140px;
+  }
+
+  .chat-area {
+    padding-top: 90px;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  .message-bubble {
+    max-width: 95%;
+    padding: 0.7rem;
+    font-size: 0.85rem;
+  }
+
+  .landing-title {
+    font-size: 1.8rem;
+  }
+
+  .landing-panel {
+    padding: 1.2rem;
+  }
+
+  .control-topic label,
+  .control-duration label {
+    font-size: 0.85rem;
+  }
+}
+
+/* --- VERY SMALL PHONES (360px and below) --- */
+@media (max-width: 360px) {
+  .chat-header {
+    padding: 0.4rem;
+    gap: 4px;
+  }
+
+  .header-toggle-button,
+  .header-exit-button {
+    padding: 5px 8px;
+  }
+
+  .chat-header-topic h2 {
+    font-size: 0.7rem;
+    max-width: 110px;
+  }
+
+  .chat-area {
+    padding-top: 85px;
+  }
+
+  .landing-title {
+    font-size: 1.5rem;
+  }
+
+  .mode-selector-btn {
+    padding: 0.8rem;
+    font-size: 0.85rem;
   }
 }
