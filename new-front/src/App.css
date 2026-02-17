@@ -576,8 +576,8 @@ body {
   justify-content: space-between;
   align-items: center;
   background: transparent;
-  /* Clean look inside the white container */
-  height: 80px;
+  min-height: 60px;
+  flex-shrink: 0;
 
   /* --- FIX FOR DROPDOWN OVERLAP --- */
   position: relative;
@@ -595,6 +595,7 @@ body {
   /* Prevent spillover */
 }
 
+/*nice*/
 .mode-icon {
   padding: 0.5rem;
   border-radius: 12px;
