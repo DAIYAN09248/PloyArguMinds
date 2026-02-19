@@ -248,6 +248,9 @@ export default function App() {
   const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const headerRef = useRef(null);
+  const chatAreaRef = useRef(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
 
   // --- EXTEND SESSION ---
   const [extending, setExtending] = useState(false);
@@ -272,6 +275,18 @@ export default function App() {
 
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loadingAgent]);
+
+  // --- DYNAMIC HEADER HEIGHT FOR MOBILE ---
+  useEffect(() => {
+    if (!headerRef.current) return;
+    const observer = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setHeaderHeight(entry.contentRect.height + 16); // 16px extra breathing room
+      }
+    });
+    observer.observe(headerRef.current);
+    return () => observer.disconnect();
+  }, [session]);
 
   // --- AUTO PLAY LOOP ---
   useEffect(() => {
@@ -892,7 +907,7 @@ export default function App() {
 
   return (
     <div className="app-container">
-      <header className="chat-header">
+      <header className="chat-header" ref={headerRef}>
         <div className="chat-header-left">
           <div className={`mode-icon ${session.mode === 'DEBATE' ? 'debate-color' : 'collab-color'}`}>{session.mode === 'DEBATE' ? <Gavel size={24} /> : <Sparkles size={24} />}</div>
           <div className="chat-header-topic">
@@ -955,7 +970,7 @@ export default function App() {
         </div>
       </header>
 
-      <div className="chat-area">
+      <div className="chat-area" ref={chatAreaRef} style={{ '--dynamic-header-h': `${headerHeight}px` }}>
         {messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)}
 
         {(loadingAgent || isFinishingEarly) && (

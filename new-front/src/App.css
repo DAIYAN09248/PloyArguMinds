@@ -1901,7 +1901,7 @@ body {
   /* Chat area — single rule with proper offsets */
   .chat-area {
     padding: 1rem;
-    padding-top: 100px;
+    padding-top: var(--dynamic-header-h, 100px);
     padding-bottom: 90px;
     flex: 1;
     overflow-y: auto;
@@ -1983,7 +1983,7 @@ body {
   }
 
   .chat-area {
-    padding-top: 90px;
+    padding-top: var(--dynamic-header-h, 90px);
     padding-left: 0.5rem;
     padding-right: 0.5rem;
   }
@@ -2026,7 +2026,7 @@ body {
   }
 
   .chat-area {
-    padding-top: 85px;
+    padding-top: var(--dynamic-header-h, 85px);
   }
 
   .landing-title {
