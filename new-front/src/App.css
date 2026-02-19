@@ -1018,13 +1018,13 @@ body {
 }
 
 /* Input Area */
-/* Input Area */
 .chat-input-area {
   padding: 1.5rem 2rem;
   background: transparent;
   /* Seamless with container */
   /* Remove border, let container shadow define edges if needed */
   border-top: none;
+  position: relative;
 }
 
 .chat-input-form {
@@ -1082,6 +1082,35 @@ body {
   opacity: 0.5;
   cursor: default;
   transform: none;
+}
+
+/* Scroll to Bottom Button */
+.scroll-to-bottom-btn {
+  position: absolute;
+  top: -48px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--bg-card);
+  color: var(--primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.25s ease;
+  z-index: 50;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.scroll-to-bottom-btn:hover {
+  background: var(--primary);
+  color: var(--bg-base);
+  transform: translateX(-50%) scale(1.1);
+  box-shadow: 0 6px 16px rgba(50, 229, 207, 0.3);
 }
 
 /* --- PAUSE/RESUME BUTTON SPECIFIC DISABLED STATE --- */
@@ -1145,7 +1174,7 @@ body {
 .typing-indicator {
   display: flex;
   justify-content: center;
-  padding: 10px;
+  padding: 4px;
 }
 
 .typing-bubble {
@@ -1902,10 +1931,11 @@ body {
   .chat-area {
     padding: 1rem;
     padding-top: var(--dynamic-header-h, 100px);
-    padding-bottom: 90px;
+    padding-bottom: 100px;
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    gap: 1rem;
   }
 
   .chat-input-area {
@@ -1920,10 +1950,16 @@ body {
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
   }
 
+  .scroll-to-bottom-btn {
+    top: -44px;
+    width: 36px;
+    height: 36px;
+  }
+
   /* Typing indicator on mobile */
   .typing-indicator {
-    padding: 8px;
-    margin-bottom: 10px;
+    padding: 4px;
+    margin-bottom: 0;
   }
 
   .typing-bubble {

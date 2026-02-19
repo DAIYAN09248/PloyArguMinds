@@ -251,6 +251,7 @@ export default function App() {
   const headerRef = useRef(null);
   const chatAreaRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(0);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   // --- EXTEND SESSION ---
   const [extending, setExtending] = useState(false);
@@ -279,14 +280,30 @@ export default function App() {
   // --- DYNAMIC HEADER HEIGHT FOR MOBILE ---
   useEffect(() => {
     if (!headerRef.current) return;
-    const observer = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        setHeaderHeight(entry.contentRect.height + 16); // 16px extra breathing room
+    const observer = new ResizeObserver(() => {
+      if (headerRef.current) {
+        setHeaderHeight(headerRef.current.getBoundingClientRect().height + 16);
       }
     });
     observer.observe(headerRef.current);
     return () => observer.disconnect();
   }, [session]);
+
+  // --- SCROLL-TO-BOTTOM DETECTION ---
+  useEffect(() => {
+    const chatEl = chatAreaRef.current;
+    if (!chatEl) return;
+    const handleScroll = () => {
+      const distanceFromBottom = chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight;
+      setShowScrollBtn(distanceFromBottom > 150);
+    };
+    chatEl.addEventListener('scroll', handleScroll);
+    return () => chatEl.removeEventListener('scroll', handleScroll);
+  }, [session]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   // --- AUTO PLAY LOOP ---
   useEffect(() => {
@@ -1010,6 +1027,11 @@ export default function App() {
       </div>
 
       <div className="chat-input-area">
+        {showScrollBtn && (
+          <button className="scroll-to-bottom-btn" onClick={scrollToBottom} title="Scroll to bottom">
+            <ChevronDown size={22} />
+          </button>
+        )}
         <form onSubmit={sendMessage} className="chat-input-form">
           <input
             type="text"
