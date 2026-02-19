@@ -20,6 +20,10 @@ import {
 const API_BASE_URL = window.location.hostname === 'localhost'
   ? `http://localhost:8080/api/discussion`
   : `https://ployarguminds.onrender.com/api/discussion`;
+
+const KEEP_ALIVE_URL = window.location.hostname === 'localhost'
+  ? `http://localhost:8080/api/health`
+  : `https://ployarguminds.onrender.com/api/health`;
 //daiyan
 // --- COUNTDOWN TIMER ---
 // --- TURN PROGRESS INDICATOR ---
@@ -276,6 +280,19 @@ export default function App() {
 
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loadingAgent]);
+
+  // --- KEEP-ALIVE PING (prevents Render free-tier sleep) ---
+  useEffect(() => {
+    const INTERVAL_MS = 14.5 * 60 * 1000; // 14 minutes 30 seconds
+    const ping = () => {
+      fetch(KEEP_ALIVE_URL)
+        .then(() => console.log('[Keep-Alive] Pinged backend ✓'))
+        .catch(() => console.log('[Keep-Alive] Ping failed (server may be waking)'));
+    };
+    ping(); // Ping immediately on load
+    const intervalId = setInterval(ping, INTERVAL_MS);
+    return () => clearInterval(intervalId);
+  }, []);
 
   // --- DYNAMIC HEADER HEIGHT FOR MOBILE ---
   useEffect(() => {
